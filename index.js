@@ -89,8 +89,7 @@ async function run() {
           sameSite: "none",
           path: "/", // Update to 'none' in a production environment
         })
-        .header("Access-Control-Allow-Origin", "http://localhost:5173") // Update to the correct origin
-        .header("Access-Control-Allow-Credentials", "true")
+
         .send({ success: true });
     });
 
@@ -145,13 +144,17 @@ async function run() {
     });
 
     //bookings
-    app.get("/mycart", verifyToken, async (req, res) => {
-      console.log(req.query.email);
-      // console.log("tok tok token", req.cookies.token);
-      console.log("from valid user", req.user);
-      if (req.query.email !== req.user.email) {
-        return res.status(403).send({ message: "forbidden access" });
-      }
+    app.get("/mycart", async (req, res) => {
+      // console.log(req.query.email);
+      // // console.log("tok tok token", req.cookies.token);
+      // console.log("from valid user", req.user);
+      // if (req.query.email !== req.user.email) {
+      //   return res.status(403).send({ message: "forbidden access" });
+      // }
+      // let query = {};
+      // if (req.query?.email) {
+      //   query = { email: req.query.email };
+      // }
       let query = {};
       if (req.query?.email) {
         query = { email: req.query.email };
@@ -160,9 +163,9 @@ async function run() {
       res.send(result);
     });
     app.post("/mycart", async (req, res) => {
-      const booking = req.body;
-      console.log(booking);
-      const result = await myCartCollection.insertOne(booking);
+      const foods = req.body;
+      console.log(foods);
+      const result = await myCartCollection.insertOne(foods);
       res.send(result);
     });
 
@@ -171,9 +174,9 @@ async function run() {
       console.log("Received DELETE request for id:", id);
 
       try {
-        console.log("Received ID:", id);
-
-        const result = await myCartCollection.deleteOne({ _id: id });
+        const result = await myCartCollection.deleteOne({
+          _id: new ObjectId(id),
+        }); // Convert the ID to ObjectId
 
         console.log("Delete result:", result);
 
@@ -185,6 +188,56 @@ async function run() {
       } catch (error) {
         console.error("Error deleting item:", error);
         res.status(500).send("Error deleting item.");
+      }
+    });
+
+    app.get("/topSellingFoodItems", async (req, res) => {
+      try {
+        const topSellingFoodItems = await myCartCollection
+          .aggregate([
+            {
+              $match: {
+                quantity: { $type: "number" }, // Filter out documents with valid 'quantity'
+              },
+            },
+            {
+              $group: {
+                _id: "$food",
+                count: { $sum: "$quantity" },
+                name: { $first: "$food" },
+                image: { $first: "$image" },
+                category: { $first: "$food" }, // Replace with actual category data
+                price: { $first: "$price" },
+              },
+            },
+            {
+              $sort: { count: -1 },
+            },
+            {
+              $limit: 6,
+            },
+            {
+              $project: {
+                _id: 0,
+                "Food Name": "$name",
+                "Food Image": "$image",
+                "Food Category": "$category",
+                Price: "$price",
+                "Details Button": {
+                  $concat: ["/foodDetails/", "$name"],
+                },
+                count: 1,
+              },
+            },
+          ])
+          .toArray();
+
+        res.send(topSellingFoodItems);
+      } catch (error) {
+        console.error(error);
+        res
+          .status(500)
+          .send("An error occurred while fetching top-selling food items.");
       }
     });
 
