@@ -75,6 +75,9 @@ async function run() {
     //Car Database
     const foodItemCollection = client.db("food").collection("foodItems");
     const cartCollection = client.db("food").collection("mycart");
+    //cart
+    const myCartDatabase = client.db("foodCartDb");
+    const myCartCollection = myCartDatabase.collection("foodCart");
     //auth related api
     app.post("/jwt", logger, async (req, res) => {
       const user = req.body;
@@ -143,19 +146,9 @@ async function run() {
     });
 
     //bookings
-
-    app.get("/mycart", logger, verifyToken, async (req, res) => {
-      console.log(req.query.email);
-      // console.log("tok tok token", req.cookies.token);
-      console.log("from valid user", req.user);
-      if (req.query.email !== req.user.email) {
-        return res.status(403).send({ message: "forbidden access" });
-      }
-      let query = {};
-      if (req.query?.email) {
-        query = { email: req.query.email };
-      }
-      const result = await cartCollection.find(query).toArray();
+    app.get("/mycart", async (req, res) => {
+      const cursor = myCartCollection.find();
+      const result = await cursor.toArray();
       res.send(result);
     });
     app.post("/mycart", async (req, res) => {
@@ -165,26 +158,63 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/mycart/:id", async (req, res) => {
+    app.delete("/mycart/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
+      console.log("Received DELETE request for id:", id);
 
-      const updatedBooking = req.body;
-      const updateDoc = {
-        $set: {
-          status: updatedBooking.status,
-        },
-      };
-      const result = await bookingCollection.updateOne(filter, updateDoc);
-      res.send(result);
+      try {
+        console.log("Received ID:", id);
+
+        const result = await myCartCollection.deleteOne({ _id: id });
+
+        console.log("Delete result:", result);
+
+        if (result.deletedCount === 0) {
+          return res.status(404).send("Item not found");
+        }
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting item:", error);
+        res.status(500).send("Error deleting item.");
+      }
     });
 
-    app.delete("/mycart", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await bookingCollection.deleteOne(query);
-      res.send(result);
-    });
+    // app.get("/mycart", async (req, res) => {
+    //   // console.log(req.query.email);
+    //   // console.log("tok tok token", req.cookies.token);
+    //   // console.log("from valid user", req.user);
+    //   // if (req.query.email !== req.user.email) {
+    //   //   return res.status(403).send({ message: "forbidden access" });
+    //   // }
+    //   // let query = {};
+    //   // if (req.query?.email) {
+    //   //   query = { email: req.query.email };
+    //   // }
+    //   const result = await cartCollection.find(query).toArray();
+    //   res.send(result);
+    // });
+
+    // app.patch("/mycart/:id", async (req, res) => {
+    //   const id = req.params.id;
+    //   const filter = { _id: new ObjectId(id) };
+
+    //   const updatedBooking = req.body;
+    //   const updateDoc = {
+    //     $set: {
+    //       status: updatedBooking.status,
+    //     },
+    //   };
+    //   const result = await bookingCollection.updateOne(filter, updateDoc);
+    //   res.send(result);
+    // });
+
+    // app.delete("/mycart", async (req, res) => {
+    //   const id = req.params.id;
+    //   const query = { _id: new ObjectId(id) };
+    //   const result = await bookingCollection.deleteOne(query);
+    //   res.send(result);
+    // });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
