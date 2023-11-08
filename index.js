@@ -18,6 +18,7 @@ app.use(express.json());
 
 console.log(process.env.DB_PASS);
 console.log(process.env.DB_User);
+console.log("ACCESS_TOKEN_SECRET", process.env.ACCESS_TOKEN_SECRET);
 
 app.get("/", (req, res) => {
   res.send("food server is Running");
@@ -47,7 +48,6 @@ const verifyToken = async (req, res, next) => {
   if (!token) {
     return res.status(401).send({ message: "not authorized" });
   }
-
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     // Handle errors or continue based on verification result
     if (err) {
@@ -69,13 +69,8 @@ async function run() {
 
     // Send a ping to confirm a successful connection
 
-    //amd Database
-    const amdDatabase = client.db("amdDb");
-    const amdCollection = amdDatabase.collection("amd");
-    //Car Database
     const foodItemCollection = client.db("food").collection("foodItems");
-    const cartCollection = client.db("food").collection("mycart");
-    //cart
+
     const myCartDatabase = client.db("foodCartDb");
     const myCartCollection = myCartDatabase.collection("foodCart");
     //auth related api
@@ -101,10 +96,15 @@ async function run() {
 
     //services related API
     app.get("/foodItems", async (req, res) => {
-      const cursor = foodItemCollection.find();
+      const page = parseInt(req.query.page);
+      const size = parseInt(req.query.size);
+      console.log("pagination", req.query, page, size);
+      const cursor = foodItemCollection
+        .find()
+        .skip(page * size)
+        .limit(size);
       const result = await cursor.toArray();
       res.send(result);
-      console.log(result);
     });
 
     app.get("/foodItems/:id", async (req, res) => {
@@ -119,7 +119,6 @@ async function run() {
       console.log(newFood);
 
       const result = await foodItemCollection.insertOne(newFood);
-
       res.send(result);
       console.log(result);
     });
@@ -146,15 +145,24 @@ async function run() {
     });
 
     //bookings
-    app.get("/mycart", async (req, res) => {
-      const cursor = myCartCollection.find();
-      const result = await cursor.toArray();
+    app.get("/mycart", verifyToken, async (req, res) => {
+      console.log(req.query.email);
+      // console.log("tok tok token", req.cookies.token);
+      console.log("from valid user", req.user);
+      if (req.query.email !== req.user.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      let query = {};
+      if (req.query?.email) {
+        query = { email: req.query.email };
+      }
+      const result = await myCartCollection.find(query).toArray();
       res.send(result);
     });
     app.post("/mycart", async (req, res) => {
       const booking = req.body;
       console.log(booking);
-      const result = await cartCollection.insertOne(booking);
+      const result = await myCartCollection.insertOne(booking);
       res.send(result);
     });
 
