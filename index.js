@@ -97,11 +97,31 @@ async function run() {
     app.get("/foodItems", async (req, res) => {
       const page = parseInt(req.query.page);
       const size = parseInt(req.query.size);
-      console.log("pagination", req.query, page, size);
+      const sortDirection = req.query.sortDirection || "asc";
+      const sortField = req.query.sortField || "price";
+      const searchTerm = req.query.searchTerm || "";
+
+      const sortObject = {};
+      sortObject[sortField] = sortDirection === "asc" ? 1 : -1;
+
+      const filterObject = {
+        $and: [
+          {
+            $or: [
+              { food: { $regex: searchTerm, $options: "i" } }, // Case-insensitive search
+              // Add more fields to search if needed
+            ],
+          },
+          // Add more $and conditions if needed
+        ],
+      };
+
       const cursor = foodItemCollection
-        .find()
+        .find(filterObject)
+        .sort(sortObject)
         .skip(page * size)
         .limit(size);
+
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -208,6 +228,7 @@ async function run() {
                 image: { $first: "$image" },
                 category: { $first: "$food" }, // Replace with actual category data
                 price: { $first: "$price" },
+                userEmail: { $first: "$email" }, // Include the user's email in the result
               },
             },
             {
@@ -218,11 +239,12 @@ async function run() {
             },
             {
               $project: {
-                _id: 0,
-                "Food Name": "$name",
-                "Food Image": "$image",
-                "Food Category": "$category",
+                "Food ID": "$_id", // Rename _id to "Food ID" if needed
+                name: "$name",
+                Image: "$image",
+                category: "$category",
                 Price: "$price",
+                userEmail: "$userEmail", // Include the user's email in the result
                 "Details Button": {
                   $concat: ["/foodDetails/", "$name"],
                 },
