@@ -55,7 +55,6 @@ const verifyToken = async (req, res, next) => {
       return res.status(401).send({ message: "unauthorized" });
     }
 
-    // If token is valid, it will be decoded
     console.log("value in the decoded token", decoded);
     req.user = decoded;
     // Continue to the next middleware or route
@@ -65,10 +64,6 @@ const verifyToken = async (req, res, next) => {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-
-    // Send a ping to confirm a successful connection
-
     const foodItemCollection = client.db("food").collection("foodItems");
 
     const myCartDatabase = client.db("foodCartDb");
@@ -85,9 +80,9 @@ async function run() {
       res
         .cookie("token", token, {
           httpOnly: true,
-          secure: true, // Update to 'true' in a production environment (with HTTPS)
+          secure: true,
           sameSite: "none",
-          path: "/", // Update to 'none' in a production environment
+          path: "/",
         })
 
         .send({ success: true });
@@ -107,12 +102,8 @@ async function run() {
       const filterObject = {
         $and: [
           {
-            $or: [
-              { food: { $regex: searchTerm, $options: "i" } }, // Case-insensitive search
-              // Add more fields to search if needed
-            ],
+            $or: [{ food: { $regex: searchTerm, $options: "i" } }],
           },
-          // Add more $and conditions if needed
         ],
       };
 
@@ -163,18 +154,8 @@ async function run() {
       res.send(result);
     });
 
-    //bookings
+    //food order
     app.get("/mycart", async (req, res) => {
-      // console.log(req.query.email);
-      // // console.log("tok tok token", req.cookies.token);
-      // console.log("from valid user", req.user);
-      // if (req.query.email !== req.user.email) {
-      //   return res.status(403).send({ message: "forbidden access" });
-      // }
-      // let query = {};
-      // if (req.query?.email) {
-      //   query = { email: req.query.email };
-      // }
       let query = {};
       if (req.query?.email) {
         query = { email: req.query.email };
@@ -196,7 +177,7 @@ async function run() {
       try {
         const result = await myCartCollection.deleteOne({
           _id: new ObjectId(id),
-        }); // Convert the ID to ObjectId
+        });
 
         console.log("Delete result:", result);
 
@@ -217,7 +198,7 @@ async function run() {
           .aggregate([
             {
               $match: {
-                quantity: { $type: "number" }, // Filter out documents with valid 'quantity'
+                quantity: { $type: "number" },
               },
             },
             {
@@ -226,9 +207,9 @@ async function run() {
                 count: { $sum: "$quantity" },
                 name: { $first: "$food" },
                 image: { $first: "$image" },
-                category: { $first: "$food" }, // Replace with actual category data
+                category: { $first: "$food" },
                 price: { $first: "$price" },
-                userEmail: { $first: "$email" }, // Include the user's email in the result
+                userEmail: { $first: "$email" },
               },
             },
             {
@@ -239,12 +220,12 @@ async function run() {
             },
             {
               $project: {
-                "Food ID": "$_id", // Rename _id to "Food ID" if needed
+                "Food ID": "$_id",
                 name: "$name",
                 Image: "$image",
                 category: "$category",
                 Price: "$price",
-                userEmail: "$userEmail", // Include the user's email in the result
+                userEmail: "$userEmail",
                 "Details Button": {
                   $concat: ["/foodDetails/", "$name"],
                 },
@@ -262,42 +243,6 @@ async function run() {
           .send("An error occurred while fetching top-selling food items.");
       }
     });
-
-    // app.get("/mycart", async (req, res) => {
-    //   // console.log(req.query.email);
-    //   // console.log("tok tok token", req.cookies.token);
-    //   // console.log("from valid user", req.user);
-    //   // if (req.query.email !== req.user.email) {
-    //   //   return res.status(403).send({ message: "forbidden access" });
-    //   // }
-    //   // let query = {};
-    //   // if (req.query?.email) {
-    //   //   query = { email: req.query.email };
-    //   // }
-    //   const result = await cartCollection.find(query).toArray();
-    //   res.send(result);
-    // });
-
-    // app.patch("/mycart/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const filter = { _id: new ObjectId(id) };
-
-    //   const updatedBooking = req.body;
-    //   const updateDoc = {
-    //     $set: {
-    //       status: updatedBooking.status,
-    //     },
-    //   };
-    //   const result = await bookingCollection.updateOne(filter, updateDoc);
-    //   res.send(result);
-    // });
-
-    // app.delete("/mycart", async (req, res) => {
-    //   const id = req.params.id;
-    //   const query = { _id: new ObjectId(id) };
-    //   const result = await bookingCollection.deleteOne(query);
-    //   res.send(result);
-    // });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
