@@ -71,11 +71,9 @@ async function run() {
     });
     app.post("/foodItems", async (req, res) => {
       const newFood = req.body;
-      console.log(newFood);
 
       const result = await foodItemCollection.insertOne(newFood);
       res.send(result);
-      console.log(result);
     });
 
     app.patch("/foodItems/:id", async (req, res) => {
@@ -110,7 +108,7 @@ async function run() {
     });
     app.post("/mycart", async (req, res) => {
       const foods = req.body;
-      console.log(foods);
+
       const result = await myCartCollection.insertOne(foods);
       res.send(result);
     });
@@ -123,8 +121,6 @@ async function run() {
         const result = await myCartCollection.deleteOne({
           _id: new ObjectId(id),
         });
-
-        console.log("Delete result:", result);
 
         if (result.deletedCount === 0) {
           return res.status(404).send("Item not found");
