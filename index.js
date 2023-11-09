@@ -26,15 +26,12 @@ const client = new MongoClient(uri, {
   },
 });
 
-//own middleware
-
 async function run() {
   try {
     const foodItemCollection = client.db("food").collection("foodItems");
 
     const myCartDatabase = client.db("foodCartDb");
     const myCartCollection = myCartDatabase.collection("foodCart");
-    //auth related api
 
     //services related API
     app.get("/foodItems", async (req, res) => {
@@ -139,7 +136,7 @@ async function run() {
         res.status(500).send("Error deleting item.");
       }
     });
-
+    //top selling Items
     app.get("/topSellingFoodItems", async (req, res) => {
       try {
         const topSellingFoodItems = await myCartCollection
