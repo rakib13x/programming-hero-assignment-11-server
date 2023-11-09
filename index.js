@@ -8,17 +8,8 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 //middleware
 app.use(cookieParser());
-app.use(
-  cors({
-    origin: ["http://localhost:5173"],
-    credentials: true,
-  })
-);
+app.use(cors());
 app.use(express.json());
-
-console.log(process.env.DB_PASS);
-console.log(process.env.DB_User);
-console.log("ACCESS_TOKEN_SECRET", process.env.ACCESS_TOKEN_SECRET);
 
 app.get("/", (req, res) => {
   res.send("food server is Running");
@@ -36,31 +27,6 @@ const client = new MongoClient(uri, {
 });
 
 //own middleware
-const logger = async (req, res, next) => {
-  console.log("called:", req.host, req.originalUrl);
-  next();
-};
-
-const verifyToken = async (req, res, next) => {
-  const token = req.cookies?.token; // Access the token from cookies
-  console.log("value of token", token);
-
-  if (!token) {
-    return res.status(401).send({ message: "not authorized" });
-  }
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    // Handle errors or continue based on verification result
-    if (err) {
-      console.log(err);
-      return res.status(401).send({ message: "unauthorized" });
-    }
-
-    console.log("value in the decoded token", decoded);
-    req.user = decoded;
-    // Continue to the next middleware or route
-    next();
-  });
-};
 
 async function run() {
   try {
@@ -69,24 +35,6 @@ async function run() {
     const myCartDatabase = client.db("foodCartDb");
     const myCartCollection = myCartDatabase.collection("foodCart");
     //auth related api
-    app.post("/jwt", logger, async (req, res) => {
-      const user = req.body;
-      console.log(user);
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "100h",
-      });
-      console.log(token);
-
-      res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: true,
-          sameSite: "none",
-          path: "/",
-        })
-
-        .send({ success: true });
-    });
 
     //services related API
     app.get("/foodItems", async (req, res) => {
@@ -244,10 +192,10 @@ async function run() {
       }
     });
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
